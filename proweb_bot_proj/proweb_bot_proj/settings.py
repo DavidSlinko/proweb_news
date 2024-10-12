@@ -20,12 +20,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-)i=rkmk=6pylc1_6fmd7n$gd8z!ie-c!fz*4az$iu8hon_psi+'
+SECRET_KEY = 'django-insecure-ihc^7j-pqqk&c+9&3_^xvn0urvq%pvh@0vnptmnktnnl0_6@&z'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '1e96-192-166-230-205.ngrok-free.app']
 
 
 # Application definition
@@ -37,9 +37,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'proweb_bot',
-    'django_webhook',
+    'proweb_bot.apps.ProwebBotConfig',
+
 ]
+
+NGROK_URL = "1e96-192-166-230-205.ngrok-free.app"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -52,8 +54,6 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'proweb_bot_proj.urls'
-
-DJANGO_WEBHOOK = dict(MODELS=["core.BotUser", "users.User"])
 
 TEMPLATES = [
     {
@@ -103,6 +103,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+TG_BOT_TOKEN = '7242746752:AAFR4ewWStQK0xhUEa_3ty5-6B8pmX6emaM'
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
