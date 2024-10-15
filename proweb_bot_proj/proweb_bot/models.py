@@ -1,5 +1,4 @@
 from django.db import models
-from django.contrib.auth.models import User, AbstractUser
 
 
 # Create your models here.
@@ -25,7 +24,7 @@ class AdminUser(models.Model):
     telegram_id = models.CharField(max_length=100, unique=True, blank=True, null=True)
 
     def __str__(self):
-        return f'{self.user.username} - Админ'
+        return f'{self.user.tg_id} - Админ'
 
     class Meta:
         verbose_name = 'Администратор'

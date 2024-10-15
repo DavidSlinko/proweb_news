@@ -42,24 +42,24 @@ def uzb_ru(message):
     else:
         pass
 
-    # keyboard = types.InlineKeyboardMarkup(row_width=2)
-    # # добавляем на нее кнопки
-    # support = types.InlineKeyboardButton(text="Тех. поддержка", url='t.me/itsmylifestyle')
-    # coworking = types.InlineKeyboardButton(text="Коворкинг", url='t.me/proweb_coworking')
-    # keyboard.add(support, coworking)
-    #
-    # competitions = types.InlineKeyboardButton(text="Конкурсы🎉", callback_data='competitions')
-    # web_site = types.InlineKeyboardButton(text="Посетить сайт", url='proweb.uz')
-    # keyboard.add(competitions, web_site)
-    #
-    # well = types.InlineKeyboardButton(text="Базовый курс", callback_data='well')
-    # review = types.InlineKeyboardButton(text="Оствить отзыв", callback_data='review')
-    # keyboard.add(well, review)
-    #
-    # rules = types.InlineKeyboardButton(text="Правила обучения", callback_data="rules")
-    # keyboard.add(rules)
-    #
-    # bot.send_message(chat_id, text, reply_markup=keyboard)
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    # добавляем на нее кнопки
+    support = types.InlineKeyboardButton(text="Тех. поддержка", url='t.me/itsmylifestyle')
+    coworking = types.InlineKeyboardButton(text="Коворкинг", url='t.me/proweb_coworking')
+    keyboard.add(support, coworking)
+
+    competitions = types.InlineKeyboardButton(text="Конкурсы🎉", callback_data='competitions')
+    web_site = types.InlineKeyboardButton(text="Посетить сайт", url='proweb.uz')
+    keyboard.add(competitions, web_site)
+
+    well = types.InlineKeyboardButton(text="Базовый курс", callback_data='well')
+    review = types.InlineKeyboardButton(text="Оствить отзыв", callback_data='review')
+    keyboard.add(well, review)
+
+    rules = types.InlineKeyboardButton(text="Правила обучения", callback_data="rules")
+    keyboard.add(rules)
+
+    bot.send_message(chat_id, text, reply_markup=keyboard)
 
 
 @bot.callback_query_handler(func=lambda call: True)

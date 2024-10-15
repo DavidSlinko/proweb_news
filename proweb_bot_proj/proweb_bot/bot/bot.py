@@ -2,13 +2,13 @@ import logging
 import telebot
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.utils.crypto import get_random_string
 from telebot import types
 from django.conf import settings
 from proweb_bot.models import CustomUser, AdminUser, Groups, GroupsCategory
 from proweb_bot.translations import translations
 
-
+bot = telebot.TeleBot(settings.TG_BOT_TOKEN, parse_mode=None)
+telebot.logger.setLevel(logging.DEBUG)
 
 
 def set_webhook():
@@ -16,28 +16,25 @@ def set_webhook():
     bot.set_webhook(url=webhook_url)
 
 
-bot = telebot.TeleBot(settings.TG_BOT_TOKEN)
+set_webhook()
 
 logging.basicConfig(level=logging.INFO)
 
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    random_password = get_random_string(10)
-
     user, created = CustomUser.objects.get_or_create(
         username_tg=message.from_user.username,
         tg_id=message.chat.id,
-        defaults={'password': random_password, 'name_tg': message.from_user.first_name}
+        defaults={'name_tg': message.from_user.first_name}
     )
 
     if created:
-        user.set_password(random_password)
+
         user.save()
-        logging.info(f"Создан пользователь: {user.username_tg} с паролем {random_password}")
+        logging.info(f"Создан пользователь: {user.username_tg}")
     else:
         logging.info(f"Пользователь {user.username_tg} уже существует.")
-
 
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
     btn_en = types.KeyboardButton(text="Русский язык 🇷🇺")
@@ -58,7 +55,6 @@ def choose_language(message):
 
     user.save()
 
-
     bot.send_message(message.chat.id, translations[user.language]['btn_send_phone'])
 
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
@@ -69,16 +65,36 @@ def choose_language(message):
 
 @bot.message_handler(content_types=['contact'])
 def handle_contact(message):
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    # добавляем на нее кнопки
+    support = types.InlineKeyboardButton(text="Тех. поддержка", url='t.me/itsmylifestyle')
+    coworking = types.InlineKeyboardButton(text="Коворкинг", url='t.me/proweb_coworking')
+    keyboard.add(support, coworking)
+
+    competitions = types.InlineKeyboardButton(text="Конкурсы🎉", callback_data='competitions')
+    web_site = types.InlineKeyboardButton(text="Посетить сайт", url='proweb.uz')
+    keyboard.add(competitions, web_site)
+
+    well = types.InlineKeyboardButton(text="Базовый курс", callback_data='well')
+    review = types.InlineKeyboardButton(text="Оствить отзыв", callback_data='review')
+    keyboard.add(well, review)
+
+    rules = types.InlineKeyboardButton(text="Правила обучения", callback_data="rules")
+    keyboard.add(rules)
+
+    
+
     if message.contact:
         try:
             user = CustomUser.objects.get(username_tg=message.from_user.username)
             user.phone_tg = message.contact.phone_number
             user.save()
             bot.send_message(message.chat.id, "Спасибо! Ваш номер сохранён.")
-            logging.info(f"Номер телефона сохранён для пользователя {user.username_tg}")
+            bot.send_message(message.chat.id, translations[user.language]['text_info'], reply_markup=keyboard)
+
         except CustomUser.DoesNotExist:
             bot.send_message(message.chat.id, "Ошибка: пользователь не найден.")
-            logging.error("Пользователь не найден для сохранения номера телефона.")
+
 
 
 @receiver(post_save, sender=CustomUser)
@@ -99,64 +115,131 @@ def create_admin_user(sender, instance, created, **kwargs):
 def handle_confirm_admin(call):
     chat_id = call.message.chat.id
 
-
     bot.send_message(chat_id, "Спасибо! Вы подтвердили своё назначение администратором.")
-
 
     show_admin_panel(chat_id)
 
 
 def show_admin_panel(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    button_send_messages = types.KeyboardButton("📩 Сделать рассылку")
-    button_view_courses = types.KeyboardButton("📚 Выбрать курсы")
+    button_send_messages = types.KeyboardButton("📩 Сделать рассылку по пользователям")
+    button_view_courses = types.KeyboardButton("📚 Выбрать курсы для рассылки")
     markup.add(button_send_messages, button_view_courses)
-    bot.send_message(chat_id, "Панель администратора:", reply_markup=markup)
+    bot.send_message(chat_id, "Панель администратора👇", reply_markup=markup)
 
 
-@bot.message_handler(func=lambda message: message.text == '📚 Выбрать курсы')
+@bot.message_handler(func=lambda message: message.text == "📩 Сделать рассылку по пользователям")
+def handle_broadcast_to_users(message):
+    chat_id = message.chat.id
+
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    button_ru = types.KeyboardButton('Рус🇷🇺')
+    button_uz = types.KeyboardButton('Uzb🇺🇿')
+    button_all = types.KeyboardButton('Отправить всем')
+    markup.add(button_ru, button_uz)
+    markup.add(button_all)
+
+    bot.send_message(chat_id, 'Выберите язык интерфайса пользователей', reply_markup=markup)
+
+
+lang_button = {}
+
+
+@bot.message_handler(func=lambda message: message.text in ['Рус🇷🇺', 'Uzb🇺🇿', 'Отправить всем'])
+def lang(message):
+    chat_id = message.chat.id
+    info_button = message.text
+
+    # Сохраняем выбранный язык или опцию "Отправить всем"
+    lang_button[chat_id] = {
+        'info_button': info_button
+    }
+
+    bot.send_message(chat_id, "Введите сообщение для рассылки по выбранным пользователям:")
+    bot.register_next_step_handler(message, send_broadcast_to_all_users)
+
+
+def send_broadcast_to_all_users(message):
+    chat_id = message.chat.id
+    broadcast_text = message.text
+    selected_language = lang_button[chat_id]['info_button']
+
+    if selected_language == 'Рус🇷🇺':
+        users = CustomUser.objects.filter(is_admin=False, language='ru')
+    elif selected_language == 'Uzb🇺🇿':
+        users = CustomUser.objects.filter(is_admin=False, language='uz')
+    else:
+        users = CustomUser.objects.filter(is_admin=False)
+
+    total_users = users.count()
+    success_count = 0
+    failed_count = 0
+
+    for user in users:
+        try:
+            bot.send_message(user.tg_id, broadcast_text)
+            success_count += 1
+        except Exception as e:
+            failed_count += 1
+
+    bot.send_message(chat_id,
+                     f'Отправлено успешных сообщений: {success_count}/{total_users}\n'
+                     f'Не удалось отправить: {failed_count} сообщений.')
+    show_admin_panel(chat_id)
+
+
+@bot.message_handler(func=lambda message: message.text == '📚 Выбрать курсы для рассылки')
 def category(message):
     chat_id = message.chat.id
-    get_category = GroupsCategory.objects.all()
-    if get_category.exists():
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
-        for cat in get_category:
-            button = types.KeyboardButton(cat.category_name)
-            markup.add(button)
+    courses = GroupsCategory.objects.all()
 
-        bot.send_message(chat_id, 'Выберите категорию:', reply_markup=markup)
-    else:
-        bot.send_message(chat_id, 'Категории не найдены.')
+    markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+    for course in courses:
+        markup.add(types.KeyboardButton(course.category_name))
+
+    markup.add(types.KeyboardButton("Далее"))
+
+    bot_data[chat_id] = {"selected_courses": []}
+
+    bot.send_message(chat_id, "Выберите один или несколько курсов и нажмите 'Далее'", reply_markup=markup)
 
 
 bot_data = {}
-
+photo_list = []
 
 @bot.message_handler(func=lambda message: message.text in [cat.category_name for cat in GroupsCategory.objects.all()])
-def handle_category_selection(message):
+def handle_course_selection(message):
     chat_id = message.chat.id
-    selected_category_name = message.text  # Сохраняем выбранную категорию
+    selected_course = message.text
 
-    # Получаем группы по выбранной категории
-    groups = Groups.objects.filter(category__category_name=selected_category_name)
-
-    if groups.exists():
-        # Сохраняем категорию в bot_data
-        bot_data[chat_id] = {
-            "selected_category": selected_category_name
-        }
-
-        # Создаем кнопки для выбора языка
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        button_ru = types.KeyboardButton("РУС")
-        button_uzb = types.KeyboardButton("UZB")
-        button_all = types.KeyboardButton('Разослать всем')
-        markup.add(button_ru, button_uzb, button_all)
-
-        bot.send_message(chat_id, f"Группы в категории '{selected_category_name}':", reply_markup=markup)
+    if "selected_courses" in bot_data[chat_id]:
+        if selected_course not in bot_data[chat_id]["selected_courses"]:
+            bot_data[chat_id]["selected_courses"].append(selected_course)
+            bot.send_message(chat_id, f"Курс '{selected_course}' добавлен к выбранным.")
+        else:
+            bot.send_message(chat_id, f"Курс '{selected_course}' уже выбран.")
     else:
-        bot.send_message(chat_id, "Группы не найдены для этой категории.")
+        bot.send_message(chat_id, "Произошла ошибка, начните заново с команды /choose_courses.")
+
+
+@bot.message_handler(func=lambda message: message.text == "Далее")
+def handle_next_step(message):
+    chat_id = message.chat.id
+    selected_courses = bot_data[chat_id].get("selected_courses", [])
+
+    if not selected_courses:
+        bot.send_message(chat_id, "Вы не выбрали ни одного курса. Пожалуйста, выберите хотя бы один курс.")
+        return
+
+    choose_language(chat_id)
+
+
+def choose_language(chat_id):
+    markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+    markup.add(types.KeyboardButton("РУС"), types.KeyboardButton("UZB"), types.KeyboardButton("Разослать всем"))
+
+    bot.send_message(chat_id, "Выберите язык для рассылки:", reply_markup=markup)
 
 
 @bot.message_handler(func=lambda message: message.text in ["РУС", "UZB", "Разослать всем"])
@@ -165,69 +248,85 @@ def handle_language_selection(message):
     selected_language = message.text
 
     if chat_id in bot_data:
-        selected_category = bot_data[chat_id]["selected_category"]
+        if "selected_courses" in bot_data[chat_id]:
+            selected_courses = bot_data[chat_id]["selected_courses"]
 
-        if selected_language == "Разослать всем":
-            groups = Groups.objects.filter(category__category_name=selected_category)
+            print(f"Фильтрация групп по курсам: {selected_courses}, язык: {selected_language}")
+
+            groups = Groups.objects.none()
+
+            if selected_language == "Разослать всем":
+                for course in selected_courses:
+                    groups = groups | Groups.objects.filter(category__category_name=course)
+            else:
+                for course in selected_courses:
+                    groups = groups | Groups.objects.filter(category__category_name=course,
+                                                            language=selected_language)
+
+            if groups.exists():
+                bot_data[chat_id]["selected_language"] = selected_language
+                bot_data[chat_id]["groups"] = groups  # Сохраняем группы для дальнейшей рассылки
+
+                bot.send_message(chat_id,
+                                 f"Введите текст сообщения для рассылки по группам с языком '{selected_language}'")
+            else:
+                bot.send_message(chat_id, "Не найдено групп для рассылки на выбранном языке.")
         else:
-            groups = Groups.objects.filter(category__category_name=selected_category, language=selected_language)
-
-        bot_data[chat_id]["selected_language"] = selected_language
-        bot_data[chat_id]["groups"] = groups  # Сохраняем группы для дальнейшей рассылки
-
-        bot.send_message(chat_id, f"Введите текст сообщения для рассылки по группам с языком '{selected_language}'")
+            bot.send_message(chat_id, "Ошибка: выбранная категория не найдена. Пожалуйста, выберите категорию заново.")
     else:
-        bot.send_message(chat_id, "Ошибка: данные категории не найдены. Начните сначала.")
+        bot.send_message(chat_id, "Ошибка: данные не найдены. Начните сначала.")
 
 
-
-
-
-
-@bot.message_handler(func=lambda message: message.chat.id in bot_data and "selected_language" in bot_data[message.chat.id])
-def handle_broadcast_message(message):
+@bot.message_handler(content_types=['photo', 'text'])
+def handle_initial_message(message):
     chat_id = message.chat.id
-    groups = bot_data[chat_id].get("groups", [])
 
-    # Проверяем тип сообщения
-    if message.content_type == 'text':
-        broadcast_text = message.text
-        media = None
-    elif message.content_type == 'photo':
-        broadcast_text = message.caption or ""  # Подпись к фото, если есть
-        media = message.photo[-1].file_id  # Получаем последнюю и самую большую версию фото
-    else:
-        bot.send_message(chat_id, "Пожалуйста, отправьте текст или фото для рассылки.")
+    if chat_id not in bot_data or "selected_language" not in bot_data[chat_id]:
+        bot.send_message(chat_id, "Сначала выберите язык.")
         return
 
-    # Лог для проверки
-    if media:
-        print(f'Отправка фото {media} с текстом "{broadcast_text}"')
-    else:
-        print(f'Отправка текста: "{broadcast_text}"')
+    if message.content_type == 'photo':
+        #photo_id = message.photo[-1].file_id
 
-    # Проверка на наличие групп
-    if groups.exists():
+        if message.photo[-1].file_id not in photo_list:
+            photo_list.append(message.photo[-1].file_id)
+
+
+        caption = message.caption or ""
+
+        print(f'инфа по фоткам {photo_list}')
+
+        handle_broadcast_message(chat_id, photo_list, caption)
+
+    elif message.content_type == 'text':
+        handle_broadcast_message(chat_id, None, message.text)
+
+
+@bot.message_handler(
+    func=lambda message: message.chat.id in bot_data and "selected_language" in bot_data[message.chat.id])
+def handle_broadcast_message(chat_id, media, broadcast_text):
+    groups = bot_data[chat_id].get("groups", [])
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    button_back = types.KeyboardButton('↩️Вернуться к выбору курсов')
+    markup.add(button_back)
+
+    if groups:
         for group in groups:
             try:
-                # Если есть фото, отправляем его с текстом (или без текста)
                 if media:
-                    bot.send_photo(group.group_id, photo=media, caption=broadcast_text)
+                    bot.send_media_group(group.group_id, photo_list, broadcast_text)
                 else:
                     bot.send_message(group.group_id, broadcast_text)
 
-                print(f"Сообщение отправлено в группу: {group.name_group}")  # Для отладки
             except Exception as e:
-                print(f"Ошибка отправки в группу {group.name_group}: {e}")
+                pass
 
-        # Сообщение о завершении рассылки
-        bot.send_message(chat_id, f"Сообщение успешно разослано по {len(groups)} группам с языком '{bot_data[chat_id]['selected_language']}'.")
-        del bot_data[chat_id]  # Очищаем данные после рассылки
+        bot.send_message(chat_id,
+                         f"Сообщение успешно разослано по {len(groups)} группам.")
+        #del bot_data[chat_id]
+        show_admin_panel(chat_id)
     else:
         bot.send_message(chat_id, "Не найдено групп для рассылки на выбранном языке.")
-
-
-    # Очищаем данные после рассылки
 
 
 # добавление группы в модель
@@ -256,4 +355,39 @@ def handle_bot_removed(message):
             group.delete()
 
         except Groups.DoesNotExist:
+            pass
+
+
+# группы в суппергруппы
+@bot.message_handler(content_types=['new_chat_members', 'migrate_to_chat_id', 'migrate_from_chat_id'])
+def handle_group_id_change(message):
+    chat_id = message.chat.id
+
+    # событие migrate_to_chat_id означает, что группа преобразована в супергруппу и ID изменился
+    if message.migrate_to_chat_id:
+        new_chat_id = message.migrate_to_chat_id
+        old_chat_id = chat_id
+        try:
+            group = Groups.objects.get(group_id=old_chat_id)
+            group.group_id = new_chat_id
+            group.save()
+            bot.send_message(new_chat_id, f"ID группы был изменён на {new_chat_id}")
+
+        except Groups.DoesNotExist:
+            pass
+        except Exception as e:
+            pass
+
+    # событие migrate_from_chat_id , что это старая группа, откуда был мигрирован чат
+    elif message.migrate_from_chat_id:
+        old_chat_id = message.migrate_from_chat_id
+        new_chat_id = chat_id
+        try:
+            group = Groups.objects.get(group_id=old_chat_id)
+            group.group_id = new_chat_id
+            group.save()
+
+        except Groups.DoesNotExist:
+            pass
+        except Exception as e:
             pass
