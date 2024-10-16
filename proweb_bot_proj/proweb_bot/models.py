@@ -109,6 +109,7 @@ class UserGroupPost(models.Model):
         verbose_name = 'Пост в Чате'
         verbose_name_plural = 'Посты в Чатах'
 
+
 # class UserPost(models.Model):
 #     user = models.ManyToManyField(CustomUser, verbose_name='Пользователи')
 #     message_id = models.CharField(max_length=255, verbose_name='ID сообщения')
