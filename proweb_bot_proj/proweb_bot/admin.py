@@ -1,10 +1,8 @@
 from django.contrib import admin
-from .models import AdminUser, CustomUser, Groups, GroupsCategory
+from .models import *
 
 
 # Register your models here.
-
-
 @admin.register(AdminUser)
 class AdminUserAdmin(admin.ModelAdmin):
     list_display = ('user', 'telegram_id')
@@ -27,3 +25,34 @@ class GroupsAdmin(admin.ModelAdmin):
 class GroupsCategoryAdmin(admin.ModelAdmin):
     list_display = ('id', 'category_name')
     list_display_links = ('id', 'category_name')
+
+
+@admin.register(Posts)
+class PostsAdmin(admin.ModelAdmin):
+    list_display = ('id', 'text_post', )
+    list_display_links = ('id', 'text_post')
+
+
+@admin.register(MediaPost)
+class MediaPostAdmin(admin.ModelAdmin):
+    list_display = ('id', 'post')
+    list_display_links = ('id', 'post')
+
+
+@admin.register(GroupPost)
+class GroupPostAdmin(admin.ModelAdmin):
+    list_display = ('id', 'post', 'group_id', 'message_id')
+    list_display_links = ('id', 'post')
+
+@admin.register(UserGroupPost)
+class UserGroupPostAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user_post', 'chat_id', 'message_id')
+    list_display_links = ('id', 'user_post')
+
+
+
+
+
+
+
+
