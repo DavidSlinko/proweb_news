@@ -1,6 +1,7 @@
 from telebot import types
-from proweb_bot.models import CustomUser, UserPost
+# from proweb_bot.models import
 from .bot_instance import bot
+from ..models import UserPost, CustomUser
 
 bot_data = {}
 lang_button = {}

@@ -110,15 +110,15 @@ class UserGroupPost(models.Model):
         verbose_name_plural = 'Посты в Чатах'
 
 
-# class UserPost(models.Model):
-#     user = models.ManyToManyField(CustomUser, verbose_name='Пользователи')
-#     message_id = models.CharField(max_length=255, verbose_name='ID сообщения')
-#     text = models.TextField(null=True, blank=True, verbose_name='Текст')
-#     media = models.JSONField(default=list, verbose_name='Список медиа')
-#
-#     def __str__(self):
-#         return self.message_id
-#
-#     class Meta:
-#         verbose_name = 'Пост для пользователя'
-#         verbose_name_plural = 'Посты для пользователей'
+class UserPost(models.Model):
+    user = models.ManyToManyField(CustomUser, verbose_name='Пользователи')
+    message_id = models.CharField(max_length=255, verbose_name='ID сообщения')
+    text = models.TextField(null=True, blank=True, verbose_name='Текст')
+    media = models.JSONField(default=list, verbose_name='Список медиа')
+
+    def __str__(self):
+        return self.message_id
+
+    class Meta:
+        verbose_name = 'Пост для пользователя'
+        verbose_name_plural = 'Посты для пользователей'

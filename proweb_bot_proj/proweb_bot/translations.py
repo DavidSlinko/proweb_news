@@ -14,6 +14,7 @@ translations = {
         'complaints': 'Жалобы и пожелания 😔',
         'btn_sign_well': 'Записаться на базовый курс',
         'btn_send_phone': 'Отправить номер телефона',
+        'btn_send_groups': '📚 Выбрать курсы для рассылки',
 
         'text_start': 'Вас приветствует центр современных профессий PROWEB! 🤗',
         'text_info': '''Данный бот разработан специально для студентов центра PROWEB.\n
@@ -107,6 +108,7 @@ Telegram: t.me/proweb_basics''',
         'complaints': 'Shikoyat va istaklar 😔',
         'btn_sign_well': 'Kompyuter asoslari kursiga yozilish',
         'btn_send_phone': 'Telefon raqamini yuboring',
+        'btn_send_groups': '📚 Pochta uchun kurslarni tanlang',
 
         'text_start': 'PROWEB zamonaviy kasblar markaziga xush kelibsiz! 🤗',
         'text_info': '''Bu bot maxsus PROWEB markazi talabalari uchun yaratilgan.

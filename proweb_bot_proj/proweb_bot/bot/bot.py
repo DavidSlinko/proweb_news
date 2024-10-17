@@ -20,7 +20,7 @@ from .bot_instance import bot
 
 
 def set_webhook():
-    webhook_url = f"https://5f88-94-158-58-53.ngrok-free.app/webhook/"
+    webhook_url = f"https://4968-192-166-230-205.ngrok-free.app/webhook/"
     bot.set_webhook(url=webhook_url)
 
 
@@ -63,26 +63,27 @@ def choose_language_group(message):
 
 @bot.message_handler(content_types=['contact'])
 def handle_contact(message):
+    user = CustomUser.objects.get(username_tg=message.from_user.username)
     keyboard = types.InlineKeyboardMarkup(row_width=2)
     # добавляем на нее кнопки
-    support = types.InlineKeyboardButton(text="Тех. поддержка", url='t.me/itsmylifestyle')
-    coworking = types.InlineKeyboardButton(text="Коворкинг", url='t.me/proweb_coworking')
+    support = types.InlineKeyboardButton(text=translations[user.language]['btn_support'], url='t.me/itsmylifestyle')
+    coworking = types.InlineKeyboardButton(text=translations[user.language]['btn_coworking'], url='t.me/proweb_coworking')
     keyboard.add(support, coworking)
 
-    competitions = types.InlineKeyboardButton(text="Конкурсы🎉", callback_data='competitions')
-    web_site = types.InlineKeyboardButton(text="Посетить сайт", url='proweb.uz')
+    competitions = types.InlineKeyboardButton(text=translations[user.language]['btn_competitions'], callback_data='competitions')
+    web_site = types.InlineKeyboardButton(text=translations[user.language]['btn_web_site'], url='proweb.uz')
     keyboard.add(competitions, web_site)
 
-    well = types.InlineKeyboardButton(text="Базовый курс", callback_data='well')
-    review = types.InlineKeyboardButton(text="Оствить отзыв", callback_data='review')
+    well = types.InlineKeyboardButton(text=translations[user.language]['btn_well'], callback_data='well')
+    review = types.InlineKeyboardButton(text=translations[user.language]['btn_review'], callback_data='review')
     keyboard.add(well, review)
 
-    rules = types.InlineKeyboardButton(text="Правила обучения", callback_data="rules")
+    rules = types.InlineKeyboardButton(text=translations[user.language]['btn_rules'], callback_data="rules")
     keyboard.add(rules)
 
     if message.contact:
         try:
-            user = CustomUser.objects.get(username_tg=message.from_user.username)
+
             user.phone_tg = message.contact.phone_number
             user.save()
             bot.send_message(message.chat.id, "Спасибо! Ваш номер сохранён.")
@@ -112,18 +113,24 @@ def handle_confirm_admin(call):
 
     bot.send_message(chat_id, "Спасибо! Вы подтвердили своё назначение администратором.")
 
-    show_admin_panel(chat_id)
+    show_admin_panel(chat_id, call)
 
 
-def show_admin_panel(chat_id):
+def show_admin_panel(chat_id, call):
+    try:
+        user = CustomUser.objects.get(username_tg=call.from_user.username)
+        language = user.language  # Получаем язык пользователя
+    except CustomUser.DoesNotExist:
+        bot.send_message(chat_id, "Ошибка: пользователь не найден.")
+        return
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     button_send_messages = types.KeyboardButton("📩 Сделать рассылку по пользователям")
-    button_view_courses = types.KeyboardButton("📚 Выбрать курсы для рассылки")
+    button_view_courses = types.KeyboardButton(translations[user.language]['btn_send_groups'])
     markup.add(button_send_messages, button_view_courses)
     bot.send_message(chat_id, "Панель администратора👇", reply_markup=markup)
 
 
-@bot.message_handler(func=lambda message: message.text == "📩 Сделать рассылку по пользователям")
+@bot.message_handler(func=lambda message: message.text == "📩 Сделать рассылку по пользователям" or "📚 Pochta uchun kurslarni tanlang")
 def broadcast_command_handler(message):
     handle_broadcast_to_users(message)
 
